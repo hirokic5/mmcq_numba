@@ -1,6 +1,8 @@
 # mmcq_numba
 Faster MMCQ algorithm ( analyze dominant colors in image) with numba in python
 
+![results](images/results.png)
+
 ## Installation
 ``` pip install mmcq-numba ```
 
@@ -23,3 +25,6 @@ colors = rgb_resize.reshape(width*height, c).astype(np.int64)
 c_map = mmcq(colors, color_count)
 
 ```
+
+## Reference
+This project is based on [mmcq.py](https://github.com/kanghyojun/mmcq.py)
