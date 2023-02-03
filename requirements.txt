@@ -1,0 +1,6 @@
+numba
+opencv-python
+matplotlib
+scikit-learn
+tqdm
+mmcq.py
