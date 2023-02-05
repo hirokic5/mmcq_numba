@@ -8,7 +8,7 @@ Faster MMCQ algorithm ( analyze dominant colors in image) with numba in python
 
 ## Usage
 ```python
-from mmcq.quantize import mmcq
+from mmcq_numba.quantize import mmcq
 
 color_count = 8 # the number of dominant colors
 quantize = 5 

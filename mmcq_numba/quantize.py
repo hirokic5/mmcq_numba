@@ -1,12 +1,14 @@
+import numpy as np
+from numba import i8, jit
+from numba.types import Tuple
+
 from .color import get_color_index
-from .constant import SIGBITS, RSHIFT, MAX_ITERATION, FRACT_BY_POPULATIONS
+from .constant import FRACT_BY_POPULATIONS, MAX_ITERATION, RSHIFT, SIGBITS
 from .region import Vbox
 from .struct import CMap, PQueue
-from numba import jit, f8, i8, b1, void
-from numba.types import Tuple
-import numpy as np
 
-@jit(i8[:](i8[:,:]),nopython=True, cache=True)
+
+@jit(i8[:](i8[:, :]), nopython=True, cache=True)
 def get_histo(colors):
     histo_size = int(1 << (3 * SIGBITS))
     histo = [0 for x in range(histo_size)]
@@ -18,7 +20,8 @@ def get_histo(colors):
         histo[i] = histo[i] + 1
     return np.array(histo)
 
-@jit(i8[:](i8[:,:]),nopython=True, cache=True)
+
+@jit(i8[:](i8[:, :]), nopython=True, cache=True)
 def vbox_from_colors(colors):
     r_colors = []
     g_colors = []
@@ -42,19 +45,20 @@ def vbox_from_colors(colors):
         ]
     )
 
-#@jit(nopython=True)
-@jit(Tuple((i8[:], i8))(i8, i8, i8,i8, i8, i8, i8[:]),nopython=True, cache=True)
-def median_cut_partial(r1,r2,g1,g2,b1,b2,histo):
+
+@jit(Tuple((i8[:], i8))(i8, i8, i8, i8, i8,
+     i8, i8[:]), nopython=True, cache=True)
+def median_cut_partial(r1, r2, g1, g2, b1, b2, histo):
     rw = r2 - r1 + 1
     gw = g2 - g1 + 1
     bw = b2 - b1 + 1
     maxw = max([rw, gw, bw])
-    
+
     tot = 0
     sum_ = 0
     if maxw == rw:
         partialsum = [0 for x in range(r1, r2 + 1)]
-        for idx,i in enumerate(range(r1, r2 + 1)):
+        for idx, i in enumerate(range(r1, r2 + 1)):
             for j in range(g1, g2 + 1):
                 for k in range(b1, b2 + 1):
                     index = get_color_index(i, j, k)
@@ -64,8 +68,8 @@ def median_cut_partial(r1,r2,g1,g2,b1,b2,histo):
             partialsum[idx] = tot
     elif maxw == gw:
         partialsum = [0 for x in range(g1, g2 + 1)]
-        
-        for idx,i in enumerate(range(g1, g2 + 1)):
+
+        for idx, i in enumerate(range(g1, g2 + 1)):
             for j in range(r1, r2 + 1):
                 for k in range(b1, b2 + 1):
                     index = get_color_index(j, i, k)
@@ -75,8 +79,8 @@ def median_cut_partial(r1,r2,g1,g2,b1,b2,histo):
             partialsum[idx] = tot
     elif maxw == bw:
         partialsum = [0 for x in range(b1, b2 + 1)]
-        
-        for idx,i in enumerate(range(b1, b2 + 1)):
+
+        for idx, i in enumerate(range(b1, b2 + 1)):
             for j in range(r1, r2 + 1):
                 for k in range(g1, g2 + 1):
                     index = get_color_index(j, k, i)
@@ -84,24 +88,23 @@ def median_cut_partial(r1,r2,g1,g2,b1,b2,histo):
 
             tot += sum_
             partialsum[idx] = tot
-            
-    partialsum = np.array(partialsum,dtype=np.int64)
+
+    partialsum = np.array(partialsum, dtype=np.int64)
     return partialsum, tot
 
 
 def median_cut_numba(histo, vbox):
     if not vbox.count:
         return None
-    
+
     if vbox.count == 1:
         return vbox.copy,
-
 
     rw = vbox.r2 - vbox.r1 + 1
     gw = vbox.g2 - vbox.g1 + 1
     bw = vbox.b2 - vbox.b1 + 1
     maxw = max([rw, gw, bw])
-    
+
     do_cut_color = None
     if maxw == rw:
         do_cut_color = 'r'
@@ -112,9 +115,10 @@ def median_cut_numba(histo, vbox):
     elif maxw == bw:
         do_cut_color = 'b'
         idxes = range(vbox.b1, vbox.b2 + 1)
-        
-    partialsum_base, tot = median_cut_partial(vbox.r1,vbox.r2,vbox.g1,vbox.g2,vbox.b1,vbox.b2,vbox.histo)
-        
+
+    partialsum_base, tot = median_cut_partial(
+        vbox.r1, vbox.r2, vbox.g1, vbox.g2, vbox.b1, vbox.b2, vbox.histo)
+
     lookaheadsum = {}
     partialsum = {}
     for i, k in enumerate(idxes):
@@ -146,12 +150,11 @@ def median_cut_numba(histo, vbox):
 
             setattr(vbox1, dim2, d2)
             setattr(vbox2, dim1, getattr(vbox1, dim2) + 1)
-            
-    
+
             return vbox1, vbox2
 
+
 def median_cut(histo, vbox):
-    start = time.time()
     if not vbox.count:
         return None
 
@@ -198,12 +201,9 @@ def median_cut(histo, vbox):
             tot += sum_
             partialsum[i] = tot
 
-    print(partialsum.keys())
-    print("median cut 1st part:",time.time()-start)
     for k, v in partialsum.items():
         lookaheadsum[k] = tot - v
 
-    start = time.time()
     dim1 = do_cut_color + '1'
     dim2 = do_cut_color + '2'
     dim1_val = getattr(vbox, dim1)
@@ -229,27 +229,17 @@ def median_cut(histo, vbox):
 
             setattr(vbox1, dim2, d2)
             setattr(vbox2, dim1, getattr(vbox1, dim2) + 1)
-            print(dim1, dim2, d2, )
-            print("median cut 2nd part:",time.time()-start)
-    
+
             return vbox1, vbox2
 
-import time
-def mmcq(colors, max_color):
-    
-    #if not isinstance(colors, list) or not colors:
-    #    raise ValueError('`colors` MUST be list '
-    #                     'that contains items not {}'.format(colors))
 
+def mmcq(colors, max_color):
     if max_color < 2 or max_color > 256:
         raise ValueError('`max_color` MUST be a integer value between '
                          '2 and 256. not {}'.format(max_color))
 
-    start = time.time()
     pq = PQueue(lambda x: x.count)
     histo = get_histo(colors)
-    #print("histo:",time.time()-start)
-    start = time.time()
     vbox_params = vbox_from_colors(colors)
     vbox = Vbox(
         vbox_params[0],
@@ -261,24 +251,18 @@ def mmcq(colors, max_color):
         histo
     )
     pq.append(vbox)
-    #print("vbox from colors:",time.time()-start)
-    
+
     def iter_(lh, target):
         n_color = 1
         n_iter = 0
-        
+
         while n_iter < MAX_ITERATION:
             vbox = lh.pop()
             if not vbox.count:
                 lh.append(vbox)
                 n_iter += 1
                 continue
-            start = time.time()
             vboxes = median_cut_numba(histo, vbox)
-            #vboxes = median_cut(histo, vbox)
-            #start = time.time()
-            #print("median cut iter:",n_iter, time.time()-start)
-            start = time.time()
             if not vboxes:
                 return None
             lh.append(vboxes[0])
@@ -291,22 +275,14 @@ def mmcq(colors, max_color):
                 return None
             n_iter += 1
 
-
-    start = time.time()
     iter_(pq, FRACT_BY_POPULATIONS * max_color)
-    #pq.sort()
-    #print("iter1:",time.time() - start)
-    start = time.time()
     pq2 = PQueue(lambda x: x.volume * x.count)
     for vbox in pq:
         pq2.append(vbox)
 
     iter_(pq2, max_color - len(pq2))
     pq2.sort()
-    #print("iter2:",time.time() - start)
-    start = time.time()
     cmap = CMap()
     for vbox in pq2:
         cmap.append(vbox)
-    #print("cmap append:",time.time() - start)
     return cmap

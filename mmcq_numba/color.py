@@ -1,6 +1,8 @@
-from .constant import SIGBITS
-from numba import jit, f8, i8, b1, void
+from numba import i8, jit
 
-@jit(i8(i8,i8,i8),nopython=True, cache=True)
+from .constant import SIGBITS
+
+
+@jit(i8(i8, i8, i8), nopython=True, cache=True)
 def get_color_index(r, g, b):
     return (r << (2 * SIGBITS)) + (g << SIGBITS) + b

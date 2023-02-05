@@ -3,14 +3,10 @@ from copy import deepcopy
 
 from .color import get_color_index
 from .constant import RSHIFT, SIGBITS
-from numba import int32, float32    # import the types
-from numba.experimental import jitclass
-from numba import types, typed
 
 __all__ = 'Vbox',
 
 
-#@jitclass(spec)
 class Vbox(object):
 
     def __init__(self, r1, r2, g1, g2, b1, b2, histo):
@@ -24,8 +20,7 @@ class Vbox(object):
         self._avg = None
         self._volumn = None
         self._count = None
-        
-        
+
     @property
     def volume(self):
         if self._volumn is None:

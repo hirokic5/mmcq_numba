@@ -3,16 +3,18 @@ from collections import Iterator
 
 from .math_ import euclidean
 
-
 __all__ = 'CMap', 'PQueue',
 
-from .color import get_color_index
-from .constant import RSHIFT, SIGBITS
-from numba import jit, f8, i8, b1, void
+from numba import i8, jit
 from numba.types import Tuple
 
-@jit(Tuple((i8, i8, i8))(i8, i8, i8,i8, i8, i8, i8[:]),nopython=True, cache=True)
-def average_numba(r1,r2,g1,g2,b1,b2,histo):
+from .color import get_color_index
+from .constant import SIGBITS
+
+
+@jit(Tuple((i8, i8, i8))(i8, i8, i8, i8, i8,
+     i8, i8[:]), nopython=True, cache=True)
+def average_numba(r1, r2, g1, g2, b1, b2, histo):
     total = 0
     mult = 1 << (8 - SIGBITS)
     r_sum = 0
@@ -39,6 +41,7 @@ def average_numba(r1,r2,g1,g2,b1,b2,histo):
 
     return r_avg, g_avg, b_avg
 
+
 class CMap:
 
     def __init__(self):
@@ -50,7 +53,14 @@ class CMap:
 
     def append(self, item):
         avg = item._avg
-        avg = average_numba(item.r1,item.r2,item.g1,item.g2,item.b1,item.b2,item.histo) if avg is None else avg
+        avg = average_numba(
+            item.r1,
+            item.r2,
+            item.g1,
+            item.g2,
+            item.b1,
+            item.b2,
+            item.histo) if avg is None else avg
         self.vboxes.append({'vbox': item, 'color': avg})
 
     def __len__(self):
@@ -78,7 +88,6 @@ class CMap:
 
         return self.nearest(color)
 
-import time
 
 class PQueue(Iterator):
 
@@ -94,20 +103,13 @@ class PQueue(Iterator):
 
     def append(self, item):
         self.items.append(item)
-        
+
     def sort(self):
-        #self.items.sort(key=self.sorted_key, reverse=True)
         self.items = sorted(self.items, key=self.sorted_key, reverse=True)
 
     def pop(self):
-        start = time.time()
-        #self.items = sorted(self.items, key=self.sorted_key, reverse=False)
-        #if len(self.items) > 1:
         self.sort()
-        #print("sorted",len(self.items), time.time()-start)
-        start = time.time()
         popout = self.items.pop(0)
-        #print("pop",len(self.items), time.time()-start)
         return popout
 
     def __len__(self):
