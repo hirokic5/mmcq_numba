@@ -1,7 +1,7 @@
 # mmcq_numba
 Faster MMCQ algorithm ( analyze dominant colors in image) with numba in python
 
-![results](images/results.png)
+![results](https://user-images.githubusercontent.com/19792127/216875249-2b2438a6-005f-4420-a517-5ad5e783dc68.png)
 
 ## Installation
 ``` pip install mmcq-numba ```
